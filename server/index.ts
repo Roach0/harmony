@@ -64,6 +64,7 @@ prisma.locale.findMany().then((locales) => {
       sendMessage(queue, socket, message, callback);
     });
 
+    // Check if the user is in a room
     socket.on("check room", (callback) => {
       const rooms = Array.from(socket.rooms);
       if (rooms.length < 2) {
