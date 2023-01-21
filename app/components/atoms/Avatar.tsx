@@ -10,7 +10,7 @@ export default function Avatar({ discordUserData, size = 28 }: AvatarProps) {
   const { id: discordId, username, avatar } = discordUserData || {};
   if (discordId && avatar) {
     return (
-      <div className={`mx-auto w-${size} h-${size}`}>
+      <div className={`w- mx-auto${size} h-${size}`}>
         <img
           className={`w-full rounded-full object-contain`}
           src={discordPhotoUrl(discordId, avatar)}
