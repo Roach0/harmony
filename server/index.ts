@@ -96,7 +96,8 @@ app.all(
       }
 );
 
-const port = process.env.PORT || 3000;
+const port =
+  process.env.PORT || (process.env.NODE_ENV === "development" ? 3000 : 8080);
 
 // instead of running listen on the Express app, do it on the HTTP server
 httpServer.listen(port, () => {
