@@ -6,7 +6,17 @@ import type { User } from "~/models/user.server";
 import { createUser } from "~/models/user.server";
 import { getUserByDiscordId } from "~/models/user.server";
 import { getUserById } from "~/models/user.server";
-import { discordAuthUrl } from "./helpers/urls";
+import { discordApiUrl, discordAuthUrl } from "~/helpers/urls";
+import type { DiscordUserData } from "~/types";
+import type { Socket } from "socket.io";
+
+interface AuthData {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token: string;
+  scope: string;
+}
 
 invariant(process.env.SESSION_SECRET, "SESSION_SECRET must be set");
 
@@ -21,26 +31,32 @@ export const sessionStorage = createCookieSessionStorage({
   },
 });
 
-const USER_SESSION_KEY = "userId";
+export const DISCORD_SESSION_KEY = "discordId";
+export const USER_SESSION_KEY = "id";
 
 export async function getSession(request: Request) {
   const cookie = request.headers.get("Cookie");
   return sessionStorage.getSession(cookie);
 }
 
-export async function getUserId(
+export async function getSessionFromSocket(socket: Socket) {
+  const cookie = socket.request.headers.cookie;
+  return sessionStorage.getSession(cookie);
+}
+
+export async function getUserDiscordId(
   request: Request
-): Promise<User["id"] | undefined> {
+): Promise<User["discordId"] | undefined> {
   const session = await getSession(request);
-  const userId = session.get(USER_SESSION_KEY);
-  return userId;
+  const discordId = session.get(DISCORD_SESSION_KEY);
+  return discordId;
 }
 
 export async function getUser(request: Request) {
-  const userId = await getUserId(request);
-  if (userId === undefined) return null;
+  const discordId = await getUserDiscordId(request);
+  if (discordId === undefined) return null;
 
-  const user = await getUserById(userId);
+  const user = await getUserByDiscordId(discordId);
   if (user) return user;
 
   throw await logout(request);
@@ -50,7 +66,7 @@ export async function requireUserId(
   request: Request,
   redirectTo: string = new URL(request.url).pathname
 ) {
-  const userId = await getUserId(request);
+  const userId = await getUserDiscordId(request);
   if (!userId) {
     const searchParams = new URLSearchParams([["redirectTo", redirectTo]]);
     throw redirect(`/login?${searchParams}`);
@@ -67,28 +83,11 @@ export async function requireUser(request: Request) {
   throw await logout(request);
 }
 
-interface AuthData {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  refresh_token: string;
-  scope: string;
-}
-
-interface UserData {
-  id: string;
-  username: string;
-  discriminator: string;
-  avatar?: string;
-  accent_color?: number;
-  locale: string;
-}
-
-export async function getUserData(
+export async function getDiscordUserData(
   authData: Pick<AuthData, "access_token" | "token_type">
-): Promise<UserData> {
-  return await axios
-    .get("https://discord.com/api/users/@me", {
+): Promise<DiscordUserData> {
+  return axios
+    .get(`${discordApiUrl}/users/@me`, {
       headers: {
         authorization: `${authData.token_type} ${authData.access_token}`,
       },
@@ -113,7 +112,7 @@ export async function login({
 }) {
   const authData: AuthData = await axios
     .post(
-      "https://discord.com/api/oauth2/token",
+      `${discordApiUrl}/oauth2/token`,
       new URLSearchParams({
         client_id,
         client_secret,
@@ -121,7 +120,7 @@ export async function login({
         ...(code && { code }),
         ...(refresh_token && { refresh_token }),
         ...(!refresh_token && {
-          redirect_uri: "http://localhost:3000/app",
+          redirect_uri: `http://localhost:3000/app`,
           scope: "identify",
         }),
       }),
@@ -131,7 +130,10 @@ export async function login({
         },
       }
     )
-    .then((resp) => resp.data);
+    .then((resp) => resp.data)
+    .catch(() => {
+      throw redirect(discordAuthUrl(client_id, process.env.HOST_URL));
+    });
 
   const session = await getSession(request);
   session.set("accessToken", authData.access_token);
@@ -139,23 +141,21 @@ export async function login({
   session.set("tokenType", authData.token_type);
   session.set("expirationDate", Date.now() + authData.expires_in);
 
-  headers.append("Set-Cookie", await sessionStorage.commitSession(session));
+  const userData: DiscordUserData = await getDiscordUserData(authData);
 
-  if (request.method === "GET") throw redirect(request.url, { headers });
-
-  const userData: UserData = await axios
-    .get("https://discord.com/api/users/@me", {
-      headers: {
-        authorization: `${authData.token_type} ${authData.access_token}`,
-      },
-    })
-    .then((resp) => resp.data);
+  session.set(DISCORD_SESSION_KEY, userData.id);
 
   let user = await getUserByDiscordId(userData.id);
 
   if (!user) {
     user = await createUser(userData.id, userData.locale);
   }
+
+  session.set(USER_SESSION_KEY, user.id);
+
+  headers.append("Set-Cookie", await sessionStorage.commitSession(session));
+
+  if (request.method === "GET") throw redirect(request.url, { headers });
 
   return authData;
 }
@@ -164,12 +164,10 @@ export async function authenticate({
   request,
   client_id,
   client_secret,
-  headers = new Headers(),
 }: {
   request: Request;
   client_id: string;
   client_secret: string;
-  headers?: Headers;
 }): Promise<Pick<AuthData, "access_token" | "token_type">> {
   const session = await getSession(request);
   const access_token = session.get("accessToken");
@@ -177,7 +175,7 @@ export async function authenticate({
   if (!access_token) {
     const code = new URL(request.url).searchParams.get("code");
     if (!code) {
-      throw redirect(discordAuthUrl(client_id));
+      throw redirect(discordAuthUrl(client_id, process.env.HOST_URL));
     }
 
     const authData = await login({
@@ -185,7 +183,6 @@ export async function authenticate({
       client_id,
       client_secret,
       code,
-      headers,
     });
 
     session.set("accessToken", authData.access_token);
@@ -204,7 +201,18 @@ export async function authenticate({
       client_id,
       client_secret,
       refresh_token,
-      headers,
+    }).catch(() => {
+      const code = new URL(request.url).searchParams.get("code");
+      if (!code) {
+        throw redirect(discordAuthUrl(client_id, process.env.HOST_URL));
+      }
+
+      return login({
+        request,
+        client_id,
+        client_secret,
+        code,
+      });
     });
 
     return data;

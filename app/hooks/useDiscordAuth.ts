@@ -17,9 +17,7 @@ export default function useDiscordAuth({
     if (code) {
       fetch("?index", {
         body: JSON.stringify({ clientId, clientSecret, code }),
-      })
-        .then((res) => res.json())
-        .then((data) => console.log(data));
+      });
     }
   }, [clientId, clientSecret, code]);
 }

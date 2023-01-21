@@ -4,12 +4,7 @@ import { hydrateRoot } from "react-dom/client";
 
 const hydrate = () => {
   startTransition(() => {
-    hydrateRoot(
-      document,
-      <StrictMode>
-        <RemixBrowser />
-      </StrictMode>
-    );
+    hydrateRoot(document, <RemixBrowser />);
   });
 };
 
