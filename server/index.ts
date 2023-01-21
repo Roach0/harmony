@@ -88,16 +88,15 @@ app.use(morgan("tiny"));
 app.all(
   "*",
   MODE === "production"
-    ? createRequestHandler({ build: require("./build") })
+    ? createRequestHandler({ build: require("./server/build") })
     : (req, res, next) => {
         purgeRequireCache();
-        const build = require("./build");
+        const build = require("./server/build");
         return createRequestHandler({ build, mode: MODE })(req, res, next);
       }
 );
 
-const port =
-  process.env.PORT || (process.env.NODE_ENV === "development" ? 3000 : 8080);
+const port = process.env.PORT || 3000;
 
 // instead of running listen on the Express app, do it on the HTTP server
 httpServer.listen(port, () => {

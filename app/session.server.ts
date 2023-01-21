@@ -120,7 +120,7 @@ export async function login({
         ...(code && { code }),
         ...(refresh_token && { refresh_token }),
         ...(!refresh_token && {
-          redirect_uri: `http://localhost:3000/app`,
+          redirect_uri: `https://${process.env.HOST_URL}/app`,
           scope: "identify",
         }),
       }),
