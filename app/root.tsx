@@ -10,18 +10,13 @@ import {
 } from "@remix-run/react";
 
 import tailwindStylesheetUrl from "./styles/tailwind.css";
-import { getUser } from "./session.server";
-import { useEffect, useState } from "react";
-import type { Socket } from "socket.io-client";
-import { io } from "socket.io-client";
-import { SocketProvider } from "./context";
+import { getSessionUser } from "./session.server";
 
 declare global {
   interface Window {
     ENV: {
       CLIENT_ID: string;
       CLIENT_SECRET: string;
-      HOST_URL: string;
     };
   }
 }
@@ -38,28 +33,11 @@ export const meta: MetaFunction = () => ({
 
 export async function loader({ request }: LoaderArgs) {
   return json({
-    user: await getUser(request),
+    user: await getSessionUser(request),
   });
 }
 
 export default function App() {
-  const [socket, setSocket] = useState<Socket>();
-
-  useEffect(() => {
-    const socket = io();
-    setSocket(socket);
-    return () => {
-      socket.close();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-    socket.on("confirmation", (data) => {
-      console.log(data);
-    });
-  }, [socket]);
-
   return (
     <html lang="en" className="h-full">
       <head>
@@ -67,9 +45,7 @@ export default function App() {
         <Links />
       </head>
       <body className="flex h-screen flex-col">
-        <SocketProvider socket={socket}>
-          <Outlet />
-        </SocketProvider>
+        <Outlet />
         <ScrollRestoration />
         <Scripts />
         <LiveReload />

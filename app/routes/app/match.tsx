@@ -1,7 +1,8 @@
 import type { Locale } from "@prisma/client";
-import { Link, useNavigate } from "@remix-run/react";
+import { useNavigate } from "@remix-run/react";
 import { useEffect } from "react";
 import Avatar from "~/components/atoms/Avatar";
+import Link from "~/components/atoms/Link";
 import { useSocket } from "~/context";
 import type { User } from "~/models/user.server";
 import type { DiscordUserData } from "~/types";
@@ -28,16 +29,19 @@ export default function AppMatchPage() {
       console.log(data);
     });
 
-    socket.on("chat start", ({ room }) => {
-      navigate(`/app/${room}`);
+    socket.on("chat-start", (peerDiscordUserData: DiscordUserData) => {
+      console.log("navigating to chat", peerDiscordUserData);
+      navigate(`/app/${peerDiscordUserData.id}`, {
+        state: peerDiscordUserData,
+      });
     });
 
     socket.emit("join-room", { locale: localeName });
   }, [localeName, navigate, socket]);
 
   const goBack = () => {
+    socket?.emit("cancel-match");
     navigate(-1);
-    socket?.disconnect();
   };
 
   return (
@@ -48,14 +52,10 @@ export default function AppMatchPage() {
           avatar,
           username,
         }}
-        size={64}
+        size="lg"
       />
       <p className="mt-6 text-xl">Matching</p>
-      <Link
-        onClick={goBack}
-        to="/app"
-        className="mt-6 flex w-32 items-center justify-center rounded-lg bg-blue-500 px-2.5 py-2 font-medium text-white hover:bg-blue-600"
-      >
+      <Link onClick={goBack} to="/app" className="mt-6">
         Cancel
       </Link>
     </section>

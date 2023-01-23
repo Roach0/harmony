@@ -1,11 +1,10 @@
 import {
   Form,
-  Link,
   useLoaderData,
   useSubmit,
   useTransition,
 } from "@remix-run/react";
-import type { ActionArgs, LoaderArgs } from "@remix-run/server-runtime";
+import type { ActionArgs } from "@remix-run/server-runtime";
 import type { User } from "~/models/user.server";
 import { updateUserLocale } from "~/models/user.server";
 import type { DiscordUserData } from "~/types";
@@ -13,8 +12,11 @@ import { json } from "@remix-run/server-runtime";
 import Avatar from "~/components/atoms/Avatar";
 import { useMatchesData } from "~/utils";
 import { getLocaleList } from "~/models/locale.server";
+import { useState, useEffect } from "react";
+import { useSocket } from "~/context";
+import Link from "~/components/atoms/Link";
 
-export async function loader({ request }: LoaderArgs) {
+export async function loader() {
   const localeList = await getLocaleList();
   return json(localeList);
 }
@@ -29,10 +31,12 @@ export async function action({ request }: ActionArgs) {
 }
 
 export default function AppIndexPage() {
+  const [ready, setReady] = useState(false);
+
+  const socket = useSocket();
   const localeList = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const transition = useTransition();
-
   const {
     discordUserData: { id, username, avatar },
     userData: { localeId },
@@ -40,6 +44,12 @@ export default function AppIndexPage() {
     discordUserData: DiscordUserData;
     userData: User;
   };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    setReady(true);
+  }, [socket]);
 
   const handleChange: React.FormEventHandler<HTMLFormElement> = (event) => {
     submit(event.currentTarget, event.currentTarget.value);
@@ -75,15 +85,7 @@ export default function AppIndexPage() {
             ))}
           </select>
         </Form>
-        <Link
-          to="match"
-          style={{
-            pointerEvents: transition.state === "submitting" ? "none" : "auto",
-            backgroundColor:
-              transition.state === "submitting" ? "#ccccccae" : undefined,
-          }}
-          className="mt-6 flex w-32 items-center justify-center rounded-lg bg-blue-500 px-2.5 py-2 font-medium text-white hover:bg-blue-600"
-        >
+        <Link disabled={!ready} to="match" className="mt-6">
           Match
         </Link>
       </section>

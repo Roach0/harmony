@@ -19,6 +19,15 @@ async function seed() {
   ];
 
   for (const { discordId, name } of LANGUAGE_OPTIONS) {
+    const exists = await prisma.locale.findUnique({
+      where: { discordId },
+    });
+
+    if (exists) {
+      console.log(`Locale ${discordId} already exists. Skipping...`);
+      continue;
+    }
+
     await prisma.locale.create({
       data: {
         discordId,

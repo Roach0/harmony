@@ -1,7 +1,7 @@
 import type { User } from "@prisma/client";
 
 import { prisma } from "~/db.server";
-import { getUserDiscordId } from "~/session.server";
+import { getSessionDiscordId } from "~/session.server";
 
 export type { User } from "@prisma/client";
 
@@ -19,7 +19,6 @@ export async function createUser(
   discordId: User["discordId"],
   localeId: User["localeId"]
 ) {
-  console.log(discordId, localeId);
   const locale = await prisma.locale.findUnique({
     where: { discordId: localeId },
   });
@@ -42,7 +41,7 @@ export async function updateUserLocale(
   request: Request,
   localeId: User["localeId"]
 ) {
-  const discordId = await getUserDiscordId(request);
+  const discordId = await getSessionDiscordId(request);
   const locale = await prisma.locale.findUnique({
     where: { id: localeId },
   });

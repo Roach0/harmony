@@ -10,7 +10,7 @@ generator client {
 model User {
   id        String @id @default(cuid())
   discordId String @unique
-  locale    Locale @relation(fields: [localeId], references: [id])
+  locale    Locale @relation(fields: [localeId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

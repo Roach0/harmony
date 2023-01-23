@@ -8,8 +8,8 @@ import morgan from "morgan";
 import { createRequestHandler } from "@remix-run/express";
 import { prisma } from "~/db.server";
 import type { Queue } from "./utils";
-import { sendMessage } from "./utils";
-import { findPeer, removePeer } from "./utils";
+import { sendMessage } from "./message";
+import { findPeer, removePeer } from "./peer";
 
 const MODE = process.env.NODE_ENV;
 const BUILD_DIR = path.join(process.cwd(), "server/build");
@@ -42,12 +42,14 @@ prisma.locale.findMany().then((locales) => {
   // from a client
   io.on("connection", (socket) => {
     // from this point you are on the WS connection with a specific client
-    console.log(socket.id, "connected");
-
     socket.emit("confirmation", "connected!");
 
     socket.on("join-room", async ({ locale }) => {
       findPeer(queue, socket, locale);
+    });
+
+    socket.on("cancel-match", () => {
+      removePeer(queue, socket);
     });
 
     socket.on("disconnect", () => {
@@ -60,17 +62,15 @@ prisma.locale.findMany().then((locales) => {
       removePeer(queue, socket);
     });
 
-    socket.on("send message", async (message: string, callback) => {
+    socket.on("send-message", async (message: string, callback) => {
       sendMessage(queue, socket, message, callback);
     });
 
     // Check if the user is in a room
-    socket.on("check room", (callback) => {
+    socket.on("check-room", (callback) => {
       const rooms = Array.from(socket.rooms);
       if (rooms.length < 2) {
         callback(false);
-      } else {
-        callback(queue.rooms[rooms[1]].messages);
       }
     });
   });
@@ -88,10 +88,10 @@ app.use(morgan("tiny"));
 app.all(
   "*",
   MODE === "production"
-    ? createRequestHandler({ build: require("./server/build") })
+    ? createRequestHandler({ build: require("./build") })
     : (req, res, next) => {
         purgeRequireCache();
-        const build = require("./server/build");
+        const build = require("./build");
         return createRequestHandler({ build, mode: MODE })(req, res, next);
       }
 );

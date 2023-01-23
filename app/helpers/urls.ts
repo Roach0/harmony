@@ -1,7 +1,14 @@
 export const discordApiUrl = "https://discord.com/api";
 
-export const discordAuthUrl = (clientId: string, hostUrl?: string) =>
-  `${discordApiUrl}/oauth2/authorize?client_id=${clientId}&redirect_uri=https%3A%2F%2F${hostUrl}%2Fapp&response_type=code&scope=identify`;
+export const getRedirectUri = (request: Request, tunnel?: boolean) =>
+  tunnel
+    ? request.url.split("?")[0].replace("http", "https")
+    : request.url.split("?")[0].substring(0, request.url.indexOf("/app") + 4);
+
+export const discordAuthUrl = (redirectUri: string) =>
+  encodeURI(
+    `${discordApiUrl}/oauth2/authorize?client_id=${process.env.CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=identify`
+  );
 
 export const discordPhotoUrl = (discordId: string, avatar: string) =>
   `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png`;
