@@ -10,5 +10,11 @@ export const discordAuthUrl = (redirectUri: string) =>
     `${discordApiUrl}/oauth2/authorize?client_id=${process.env.CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=identify`
   );
 
-export const discordPhotoUrl = (discordId: string, avatar: string) =>
-  `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png`;
+export const discordPhotoUrl = (
+  discordId: string,
+  avatar: string,
+  size?: number
+) =>
+  `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png${
+    size && `?size=${size}`
+  }`;

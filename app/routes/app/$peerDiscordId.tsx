@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSocket } from "~/context";
 import type { DiscordUserData, Message } from "~/types";
 import { useMatchesData } from "~/utils";
-import { useLocation, useNavigate } from "@remix-run/react";
+import { useLocation } from "@remix-run/react";
 import Button from "~/components/atoms/Button";
 import Avatar from "~/components/atoms/Avatar";
 import Link from "~/components/atoms/Link";
@@ -14,7 +14,6 @@ export default function AppRoomPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const socket = useSocket();
-  const navigate = useNavigate();
   const location = useLocation();
   const peerDiscordUserData: DiscordUserData | undefined = location?.state;
 
@@ -32,7 +31,7 @@ export default function AppRoomPage() {
     socket.on("send-message", (messages: Message[]) => {
       setMessages(messages);
     });
-  }, [navigate, socket]);
+  }, [socket]);
 
   const sendMessage = () => {
     if (!inputRef.current?.value) return;
