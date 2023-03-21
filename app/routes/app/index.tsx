@@ -1,61 +1,98 @@
-import { useLoaderData } from "@remix-run/react";
-import type { LoaderArgs } from "@remix-run/server-runtime";
+import {
+  Form,
+  useLoaderData,
+  useSubmit,
+  useTransition,
+} from "@remix-run/react";
+import type { ActionArgs } from "@remix-run/server-runtime";
+import type { User } from "~/models/user.server";
+import { updateUserLocale } from "~/models/user.server";
+import type { DiscordUserData } from "~/types";
 import { json } from "@remix-run/server-runtime";
-import { authenticate, getUserData } from "~/session.server";
+import Avatar from "~/components/atoms/Avatar";
+import { useMatchesData } from "~/utils";
+import { getLocaleList } from "~/models/locale.server";
+import { useState, useEffect } from "react";
+import { useSocket } from "~/context";
+import Link from "~/components/atoms/Link";
 
-export async function loader({ request }: LoaderArgs) {
-  const client_id = process.env.CLIENT_ID as string;
-  const client_secret = process.env.CLIENT_SECRET as string;
+export async function loader() {
+  const localeList = await getLocaleList();
+  return json(localeList);
+}
 
-  const authData = await authenticate({
-    request,
-    client_id,
-    client_secret,
-  });
+export async function action({ request }: ActionArgs) {
+  const form = await request.formData();
+  const localeId = form.get("locale") as string;
 
-  const userData = await getUserData(authData);
+  updateUserLocale(request, localeId);
 
-  return json(userData);
+  return json({ success: true });
 }
 
 export default function AppIndexPage() {
+  const [ready, setReady] = useState(false);
+
+  const socket = useSocket();
+  const localeList = useLoaderData<typeof loader>();
+  const submit = useSubmit();
+  const transition = useTransition();
   const {
-    id: userId,
-    username,
-    avatar,
-    accent_color,
-  } = useLoaderData<typeof loader>();
+    discordUserData: { id, username, avatar },
+    userData: { localeId },
+  } = useMatchesData("routes/app") as {
+    discordUserData: DiscordUserData;
+    userData: User;
+  };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    setReady(true);
+  }, [socket]);
+
+  const handleChange: React.FormEventHandler<HTMLFormElement> = (event) => {
+    submit(event.currentTarget, event.currentTarget.value);
+  };
+
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-white">
-      <section
-        className={`mx-auto w-64 rounded-2xl ${
-          accent_color ? `bg-[#${accent_color}]` : "bg-gray-600"
-        } px-8 py-6 text-center shadow-lg`}
-      >
-        {avatar ? (
-          <img
-            className="mx-auto w-28 rounded-full"
-            src={`https://cdn.discordapp.com/avatars/${userId}/${avatar}.png`}
-            alt={username}
-          />
-        ) : (
-          <div className="relative mx-auto h-28 w-28 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-600">
-            <svg
-              className="absolute -left-2 h-32 w-32 text-gray-400"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                clip-rule="evenodd"
-              ></path>
-            </svg>
-          </div>
-        )}
-        <div className="mt-6 text-xl text-white">{`${username}`}</div>
+    <section className="flex h-full grow flex-col items-center justify-center">
+      <section className={`mx-auto text-center`}>
+        <Avatar
+          discordUserData={{
+            id,
+            avatar,
+            username,
+          }}
+        />
+        <div className="mt-6 text-xl text-white">{username}</div>
       </section>
-    </main>
+      <section className="mt-6 flex flex-col text-center">
+        <label htmlFor="locale" className="text-white">
+          Language
+        </label>
+        <Form action="/app?index" method="post" onChange={handleChange}>
+          <select
+            disabled={transition.state === "submitting"}
+            name="locale"
+            defaultValue={localeId}
+            className="mt-3 block w-32 rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-400 dark:focus:border-blue-500 dark:focus:ring-blue-500"
+          >
+            {localeList?.map(({ id, name }) => (
+              <option key={id} value={id}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </Form>
+        <Link
+          disabled={!ready || transition.state === "submitting"}
+          to="match"
+          className="mt-6"
+        >
+          Match
+        </Link>
+      </section>
+    </section>
   );
 }

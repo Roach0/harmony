@@ -1,9 +1,8 @@
-import { Link } from "@remix-run/react";
+import Link from "~/components/atoms/Link";
 
 export default function Index() {
-
   return (
-    <main className="relative min-h-screen bg-white flex items-center justify-center">
+    <main className="relative flex min-h-screen items-center justify-center bg-white">
       <div className="relative sm:pb-16 sm:pt-8">
         <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
           <div className="relative shadow-xl sm:overflow-hidden sm:rounded-2xl">
@@ -21,10 +20,7 @@ export default function Index() {
               </p>
               <div className="mx-auto mt-10 max-w-sm sm:flex sm:max-w-none sm:justify-center">
                 <div className="space-y-4 sm:mx-auto">
-                  <Link
-                    to="/app"
-                    className="flex items-center justify-center rounded-md bg-blue-500 px-4 py-3 font-medium text-white hover:bg-blue-600"
-                  >
+                  <Link to="app" className="px-4 py-3">
                     Log In With Discord
                   </Link>
                 </div>

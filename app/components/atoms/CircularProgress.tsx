@@ -5,6 +5,7 @@ interface CircularProgressProps {
 export default function CircularProgress({ size = 5 }: CircularProgressProps) {
   return (
     <svg
+      // eslint-disable-next-line tailwindcss/no-custom-classname
       className={`h-${size} w-${size} animate-spin text-blue-500`}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"

@@ -3,20 +3,40 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function seed() {
-  const discordId = "1";
+  const LANGUAGE_OPTIONS = [
+    { discordId: "zh-CN", name: "Chinese, China" },
+    { discordId: "zh-TW", name: "Chinese, Taiwan" },
+    { discordId: "en-US", name: "English, US" },
+    { discordId: "en-GB", name: "English, UK" },
+    { discordId: "fr", name: "French" },
+    { discordId: "de", name: "German" },
+    { discordId: "it", name: "Italian" },
+    { discordId: "ja", name: "Japanese" },
+    { discordId: "ko", name: "Korean" },
+    { discordId: "pt-BR", name: "Portuguese" },
+    { discordId: "ru", name: "Russian" },
+    { discordId: "es-ES", name: "Spanish" },
+  ];
 
-  // cleanup the existing database
-  await prisma.user.delete({ where: { discordId } }).catch(() => {
-    // no worries if it doesn't exist yet
-  });
+  for (const { discordId, name } of LANGUAGE_OPTIONS) {
+    const exists = await prisma.locale.findUnique({
+      where: { discordId },
+    });
 
-  await prisma.user.create({
-    data: {
-      discordId,
-    },
-  });
+    if (exists) {
+      console.log(`Locale ${discordId} already exists. Skipping...`);
+      continue;
+    }
 
-  console.log(`Database has been seeded. 🌱`);
+    await prisma.locale.create({
+      data: {
+        discordId,
+        name,
+      },
+    });
+
+    console.log(`Database has been seeded. 🌱`);
+  }
 }
 
 seed()

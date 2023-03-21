@@ -10,7 +10,7 @@ import {
 } from "@remix-run/react";
 
 import tailwindStylesheetUrl from "./styles/tailwind.css";
-import { getUser } from "./session.server";
+import { getSessionUser } from "./session.server";
 
 declare global {
   interface Window {
@@ -33,7 +33,7 @@ export const meta: MetaFunction = () => ({
 
 export async function loader({ request }: LoaderArgs) {
   return json({
-    user: await getUser(request),
+    user: await getSessionUser(request),
   });
 }
 
@@ -44,7 +44,7 @@ export default function App() {
         <Meta />
         <Links />
       </head>
-      <body className="h-full">
+      <body className="flex h-screen flex-col">
         <Outlet />
         <ScrollRestoration />
         <Scripts />
